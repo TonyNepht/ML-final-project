@@ -9,16 +9,16 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 time1=datetime.now()
 print(time1)
-nm = 495 #miRNA个数
-nd = 383 #疾病个数
-nc = 5430 #miRNA-疾病关联对数
+nm = 495 # number of miRNA
+nd = 383 # number of disease
+nc = 5430 # number of related miRNA-disease
 
 ConnectDate = np.loadtxt('knowndiseasemirnainteraction.txt',dtype=int)-1
-# 读入两种疾病语义相似性数据
+# read in two kinds of disease semantic similarity data
 DS1 =np.loadtxt('疾病语义类似性矩阵1.txt') 
 DS2 = np.loadtxt('疾病语义类似性矩阵2.txt')
 
-# 读入miRNA功能类似性数据
+# read in miRNA function similarity data
 FS = np.loadtxt(r'miRNA功能类似性矩阵.txt')
 
 #print('s')
@@ -35,7 +35,7 @@ def Getgauss_miRNA(adjacentmatrix,nm):
                       KM[i,j]= np.exp (-gamam*(np.linalg.norm(adjacentmatrix[:,i]-adjacentmatrix[:,j])**2))
        return KM
 
-# 疾病高斯类似性矩阵
+# disease Gaussian similarity matrix
 def Getgauss_disease(adjacentmatrix,nd):
        KD = np.zeros((nd,nd))
        gamaa=1
@@ -49,12 +49,12 @@ def Getgauss_disease(adjacentmatrix,nd):
                KD[i,j]= np.exp(-(gamad*(np.linalg.norm(adjacentmatrix[i]-adjacentmatrix[j])**2)))
        return KD
 def sample_partition(positive_sample_index,unknown_sample_index,FeatureD,FeatureM):    
-    positive_sample_FetureD = FeatureD[positive_sample_index[:,0]] #这样用数组整体操作
+    positive_sample_FetureD = FeatureD[positive_sample_index[:,0]]
     positive_sample_FetureM = FeatureM[positive_sample_index[:,1]]
-    positive_sample_Feture = np.hstack((positive_sample_FetureD,positive_sample_FetureM))#特征拼接
+    positive_sample_Feture = np.hstack((positive_sample_FetureD,positive_sample_FetureM))# joint eigenvector
     unknown_sample_FeatureD = FeatureD[unknown_sample_index[:,0]]
     unknown_sample_FeatureM = FeatureM[unknown_sample_index[:,1]]
-    unknown_sample_Feature = np.hstack((unknown_sample_FeatureD,unknown_sample_FeatureM))#特征拼接
+    unknown_sample_Feature = np.hstack((unknown_sample_FeatureD,unknown_sample_FeatureM))# joint eigenvector
     mean=np.mean(positive_sample_Feture,0)
     
     T1=time.time()
@@ -64,10 +64,10 @@ def sample_partition(positive_sample_index,unknown_sample_index,FeatureD,Feature
         distance.append(dis)
     T2 = time.time()
     distance = np.array(distance)    
-    arg_distance = np.argsort(distance)#此处应按降序排序
+    arg_distance = np.argsort(distance)# sort as descending order
     negitive_sample_index = arg_distance[0:nc-1]
     negitive_sample_feature = unknown_sample_Feature[negitive_sample_index]
-    test_sample_index = unknown_sample_index # 此处我把所有未知样本，包含那些已经被选作负样本的，作为测试样本，即给所有的0打分
+    test_sample_index = unknown_sample_index
     test_sample_feature = unknown_sample_Feature
     return positive_sample_Feture,negitive_sample_feature,test_sample_feature
 
@@ -113,8 +113,8 @@ def train_and_predict(train_sample_feature,test_sample_feature,X_train,X_test,Y_
     
     return(X_train,X_test,Y_value,test_result,accList)
 
-# 生成邻接矩阵
-A=np.zeros((nd,nm),dtype=float)  #生成一个383*495的矩阵,初值为0
+# produce joint matrix
+A=np.zeros((nd,nm),dtype=float)  # produce a 383*495 matrix
 for i in range(nc):
     A[ConnectDate[i,1], ConnectDate[i,0]] = 1
 globalrank_pos = []
@@ -123,14 +123,14 @@ predict_0_local = []
 accList = []
 for i_nc in range(5430):
     T3 = time.time()
-    A[ConnectDate[i_nc,1],ConnectDate[i_nc,0]] = 0  # 将A中的一个1变成0
-    KM = Getgauss_miRNA(A,nm)  #用邻接矩阵重新计算miRNA的高斯相似矩阵
-    KD = Getgauss_disease(A,nd)  #用邻接矩阵重新计算disease的高斯相似矩阵
-    positive_sample_index = np.argwhere(A == 1)#正样本，用数组操作，减少For循环的使用，可节省时间
-    unknown_sample_index =  np.argwhere(A == 0)# 负样本
+    A[ConnectDate[i_nc,1],ConnectDate[i_nc,0]] = 0  # change only one '1' in A to '0'
+    KM = Getgauss_miRNA(A,nm)  # use joint matrix recompute the Gaussian similarity matrix of miRNA
+    KD = Getgauss_disease(A,nd)  # use joint matrix recompute the Gaussian similarity matrix of disease
+    positive_sample_index = np.argwhere(A == 1)# positive sample
+    unknown_sample_index =  np.argwhere(A == 0)# negative sample
     for i in range(unknown_sample_index.shape[0]):
         if unknown_sample_index[i,0]== ConnectDate[i_nc,1] and unknown_sample_index[i,1]== ConnectDate[i_nc,0]:
-            i_1_0 = i # 表示由1变0的实例在unknown_sample_index中位置          
+            i_1_0 = i # represnet the location of sample changed from 1 to 0
             break
     
     #SVM1
@@ -189,23 +189,23 @@ for i_nc in range(5430):
     Y_value = Y_value/6
     clf = clf.fit(X_train, Y_value)
     predict_0 = clf.predict(X_test)
-    predict_0_globalrank = pd.Series(predict_0).rank(ascending=False) #降序，为各个值分配平均排名
+    predict_0_globalrank = pd.Series(predict_0).rank(ascending=False) # in descending order
     time2=datetime.now()
     print(time2)
     #print(time2-time1)
-    globalrank_pos.append(predict_0_globalrank[i_1_0])#global
+    globalrank_pos.append(predict_0_globalrank[i_1_0])# global
     j=0
     for i in range(unknown_sample_index.shape[0]):
         if unknown_sample_index[i,0] == ConnectDate[i_nc,1]:
-            predict_0_local.append(predict_0[i]) # 本地排名序列
+            predict_0_local.append(predict_0[i]) # local
             j=j+1
         if i==i_1_0:
             i_local=j
     predict_0_localrank=pd.Series(predict_0_local).rank(ascending=False) 
-    localrank_pos.append(predict_0_localrank[i_local-1]) #找出 找出A中1变0对应实例的local排名
+    localrank_pos.append(predict_0_localrank[i_local-1]) # find out the rank of the sample changed from 1 to 0 in A
 
 
-    A[ConnectDate[i_nc,0], ConnectDate[i_nc,1]] = 1  # 将A中变0元素变回1 
+    A[ConnectDate[i_nc,0], ConnectDate[i_nc,1]] = 1  # change the 1->0 elements in A to 1
     
     globalrank_posTemp = np.array(globalrank_pos)
     
