@@ -15,11 +15,11 @@ nc = 5430 # number of related miRNA-disease
 
 ConnectDate = np.loadtxt('knowndiseasemirnainteraction.txt',dtype=int)-1
 # read in two kinds of disease semantic similarity data
-DS1 =np.loadtxt('疾病语义类似性矩阵1.txt') 
-DS2 = np.loadtxt('疾病语义类似性矩阵2.txt')
+DS1 =np.loadtxt('disease semantic similarity matrix1.txt') 
+DS2 = np.loadtxt('disease semantic similarity matrix2.txt')
 
 # read in miRNA function similarity data
-FS = np.loadtxt(r'miRNA功能类似性矩阵.txt')
+FS = np.loadtxt(r'miRNA function similarity matrix.txt')
 
 #print('s')
 def Getgauss_miRNA(adjacentmatrix,nm):
